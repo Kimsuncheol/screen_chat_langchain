@@ -20,6 +20,8 @@ class Wire(httpx.AsyncByteStream):
 
 
 async def test_cloud_request_and_cleanup(cfg):
+    cfg.image_support_verified = True
+    cfg.verified_image_model_id = cfg.model_id
     wire = Wire([b'{"message":{"content":"hello"},"done":false}\n',
                  b'{"done":true,"done_reason":"stop"}\n'])
     def handler(request):

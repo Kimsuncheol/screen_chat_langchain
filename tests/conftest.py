@@ -17,6 +17,8 @@ class FakeAuth:
 
 
 class FakeModel:
+    supports_images = False
+
     def __init__(self):
         self.calls = []
         self.closed = False

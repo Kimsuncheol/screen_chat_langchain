@@ -19,7 +19,7 @@ def validate_input(req: AssistantRequest, cfg: Settings) -> None:
     image = req.screen.image if req.screen else None
     if image is None:
         return
-    if not cfg.image_support_verified:
+    if not cfg.images_enabled:
         raise ServiceError('image_not_supported')
     if len(image.data_base64) > 4 * ((cfg.max_image_bytes + 2) // 3):
         raise ServiceError('payload_too_large')

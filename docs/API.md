@@ -91,7 +91,13 @@ below assumes a configured model/key and all actions enabled. With no model/key,
 `actions` is empty and both inputs are false. With no enabled actions, both inputs
 are also false. Image support defaults to false and requires explicit verification
 by the operator for the exact selected Cloud model before setting
-`SC_IMAGE_SUPPORT_VERIFIED=true`. No live provider probe runs on this endpoint.
+`SC_IMAGE_SUPPORT_VERIFIED=true` and `SC_VERIFIED_IMAGE_MODEL_ID` equal to
+`SC_MODEL_ID`. The shared adapter must also report image support. A missing or
+mismatched verified model ID disables images even if the flag is true. No live
+provider probe or paid verification call runs on this endpoint. Verification is
+an operator attestation for that exact model, not automatic capability discovery.
+Reverify vision, context and image budgets when changing the model or provider
+revision, then update the attested model ID; do not copy approval by model family.
 
 ```json
 {
@@ -197,9 +203,55 @@ Validation:
 }
 ```
 
-Produce a short Markdown summary grounded in the supplied screen. Preserve
-important visible names, dates, quantities, and warnings. Acknowledge incomplete
-or unreadable context instead of inventing facts.
+This uses the shared LangChain prompt workflow and direct Ollama Cloud adapter.
+Supply non-whitespace OCR, a decodable PNG/JPEG image, or both. A valid image
+with no readable text is still accepted: legibility is assessed by the model,
+not by a server-side OCR heuristic. Empty/missing sources or corrupt images
+return 422 `invalid_request`. A supplied image requires verified model/adapter
+vision support; otherwise return 422 `image_not_supported` before streaming,
+even when OCR is present. Images are never silently dropped or replaced with
+OCR. If the client wants OCR-only processing after rejection, it must explicitly
+submit a new request without the image.
+
+The summary prompt asks for one short sentence identifying the main subject,
+then up to four short Markdown bullets when useful (fewer for sparse content).
+It preserves important visible names, dates, quantities, units and warnings.
+It uses `language=en` or `ko` even when captured content requests another
+language; `auto` follows the source language, falling back to English. Proper
+names and exact values remain intact. Screenshot/OCR instructions are untrusted
+evidence, never system instructions. No tools or outside context are supplied.
+
+For cropped, unreadable or conflicting image/OCR evidence, the model is instructed
+to state uncertainty and summarize only supported details. If nothing can be
+read reliably, it should say it cannot reliably summarize the screen and ask for
+a clearer capture instead of inventing key points. This uncertainty is normal
+answer text in `delta` events, not a validation or upstream error. These are model
+instructions rather than a deterministic guarantee of model accuracy; automated
+tests verify prompt boundaries and transport using scripted fake model output.
+
+Illustrative response for the OCR request above (wording and delta boundaries
+can vary; concatenate delta text):
+
+```text
+event: start
+data: {"request_id":"req_summary_example","action":"summarize"}
+
+event: delta
+data: {"request_id":"req_summary_example","text":"Project launch update.\n"}
+
+event: delta
+data: {"request_id":"req_summary_example","text":"- Launch moved to November 4.\n- Testing remains open."}
+
+event: complete
+data: {"request_id":"req_summary_example","finish_reason":"stop"}
+
+```
+
+For image-only processing, replace `screen.ocr_text` with `screen.image` using
+the image schema above and the actual raw base64 string. To supply both, keep
+both fields in `screen`. The adapter attaches the image to the user message in
+memory; only an attachment marker goes into the serialized text prompt. No
+screenshot bytes are promoted to system instructions or persisted.
 
 #### Analyze
 
@@ -287,7 +339,7 @@ Before streaming starts, return an appropriate HTTP status and this JSON shape:
 {
   "error": {
     "code": "invalid_request",
-    "message": "A question is required for ask.",
+    "message": "The request does not match the supported input schema.",
     "request_id": "req_example",
     "retryable": false
   }
@@ -367,6 +419,7 @@ not authorize automatic resubmission of a partially streamed answer.
 
 | Date | Change | Compatibility |
 | --- | --- | --- |
+| 2026-10-18 | Refined summarize output/language/uncertainty contract; added source-specific tests and example SSE; tied vision approval to exact model ID and adapter support for all actions | Vision configuration tightening: existing image deployments must reverify their model and set `SC_VERIFIED_IMAGE_MODEL_ID` equal to `SC_MODEL_ID` alongside the existing flag; otherwise image capabilities are false and image requests return 422. Request/SSE schemas unchanged; custom adapters must implement `supports_images`. OCR-only clients need no migration |
 | 2026-10-18 | Implemented endpoints, safe Firebase verification, SSE/cleanup, explicit model selection, opt-in verified vision, bounded input/context and single-process rate/daily quota accounting | No previously deployed API; migrate proposed clients to capability discovery and required sign-in, note image default false and new quota/context fields |
 | 2026-10-18 | Initial proposed API contract for summarize, analyze, and ask | No deployed API yet |
 

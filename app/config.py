@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     firebase_project_id: str = ''
     enabled_actions: list[str] = ['summarize', 'analyze', 'ask']
     image_support_verified: bool = False
+    verified_image_model_id: str = ''
     context_tokens: int = Field(32768, ge=1024)
     max_output_tokens: int = Field(2048, ge=1)
     image_token_reserve: int = Field(8192, ge=1)
@@ -39,6 +40,13 @@ class Settings(BaseSettings):
         if self.max_output_tokens >= self.context_tokens:
             raise ValueError('Output budget must be smaller than context')
         return self
+
+    @property
+    def images_enabled(self) -> bool:
+        # Operator verification is tied to the exact direct-cloud model name.
+        # Changing model_id invalidates prior vision approval; never guess by family.
+        return (self.model_ready and self.image_support_verified
+                and self.verified_image_model_id == self.model_id)
 
     @property
     def model_ready(self):

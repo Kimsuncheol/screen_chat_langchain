@@ -132,6 +132,8 @@ async def test_images(client, cfg, model):
     body = {**ASK, 'screen': {'image': {'media_type': 'image/png', 'data_base64': fake_image()}}}
     assert (await client.post('/v1/assistant/stream', json=body)).json()['error']['code'] == 'image_not_supported'
     cfg.image_support_verified = True
+    cfg.verified_image_model_id = cfg.model_id
+    model.supports_images = True
     assert (await client.get('/v1/capabilities')).json()['inputs']['image']
     assert (await client.post('/v1/assistant/stream', json=body)).status_code == 200
     assert model.calls[-1][1] == body['screen']['image']['data_base64']

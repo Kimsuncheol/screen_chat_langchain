@@ -21,6 +21,9 @@ class ModelChunk:
 
 
 class ModelAdapter(Protocol):
+    @property
+    def supports_images(self) -> bool: ...
+
     def stream(self, messages: list[BaseMessage], image: str | None) -> AsyncIterator[ModelChunk]: ...
 
 
@@ -50,7 +53,13 @@ class OllamaCloudAdapter:
     def __init__(self, cfg: Settings, transport: httpx.AsyncBaseTransport | None = None):
         self.cfg, self.transport = cfg, transport
 
+    @property
+    def supports_images(self) -> bool:
+        return self.cfg.images_enabled
+
     async def stream(self, messages: list[BaseMessage], image: str | None):
+        if image is not None and not self.supports_images:
+            raise ServiceError('image_not_supported')
         payload_messages = [{'role': {'system': 'system', 'human': 'user', 'ai': 'assistant'}[m.type],
                              'content': m.content} for m in messages]
         if image:

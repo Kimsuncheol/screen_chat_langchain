@@ -159,7 +159,7 @@ def create_app(cfg: Settings | None = None, *, authenticator: Authenticator | No
         return Capabilities(actions=cfg.enabled_actions if ready else [],
                             inputs=InputCapabilities(text=ready and bool(cfg.enabled_actions),
                                                      image=ready and bool(cfg.enabled_actions)
-                                                     and cfg.image_support_verified),
+                                                     and cfg.images_enabled and adapter.supports_images),
                             limits={name: getattr(cfg, name) for name in names})
 
     request_schema = AssistantRequest.model_json_schema(ref_template='#/components/schemas/{model}')
@@ -187,6 +187,8 @@ def create_app(cfg: Settings | None = None, *, authenticator: Authenticator | No
         if not cfg.model_ready or req.action not in cfg.enabled_actions:
             raise ServiceError('service_unavailable')
         validate_input(req, cfg)
+        if req.screen and req.screen.image and not adapter.supports_images:
+            raise ServiceError('image_not_supported')
         messages = WORKFLOWS[req.action].messages(req)
         image = req.screen.image.data_base64 if req.screen and req.screen.image else None
         check_context(messages, image, cfg)

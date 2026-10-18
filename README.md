@@ -40,7 +40,11 @@ and `https://ollama.com/api/tags`; use the returned exact name, not a local CLI
 `:cloud` alias. The official example currently uses `gemma4:31b`; availability
 and account access must be checked at deployment. Keep images disabled until
 that exact model's vision capability, context budget and image token reserve
-have been verified. No live provider calls were made to validate a model here.
+have been verified. Then set both `SC_IMAGE_SUPPORT_VERIFIED=true` and
+`SC_VERIFIED_IMAGE_MODEL_ID` to the exact `SC_MODEL_ID`. Model changes invalidate
+that approval by an exact-name check. This is operator-attested capability
+configuration, not a live provider metadata check. No live provider calls were
+made to validate a model here.
 The configured context budget is admission policy, not a claim about model size.
 See [API contract](docs/API.md) for the conservative context estimate.
 
@@ -79,6 +83,36 @@ curl -N http://127.0.0.1:8000/v1/assistant/stream \
 
 Production requires HTTPS. Cancel by closing the connection. Never retry an
 answer automatically after receiving deltas. More examples: [docs/API.md](docs/API.md).
+
+## Summarize
+
+Send `action="summarize"` to the same authenticated streaming endpoint with
+`screen.ocr_text`, `screen.image`, or both. The workflow requests a short main
+subject sentence and up to four key-point bullets in the requested language,
+preserving visible names, dates, quantities and warnings. It asks the model to
+state uncertainty for unreadable/cropped/conflicting evidence and request a clearer
+capture when nothing can be summarized reliably. Captured instructions stay
+untrusted data. The server does not infer missing facts or run screen instructions.
+See the [request and example stream](docs/API.md#summarize).
+
+Images require approval for the exact configured model and an adapter reporting
+vision support. They are rejected explicitly when unsupported, including when
+OCR is available; there is no silent OCR fallback. A valid image with unreadable
+content can produce a normal streamed uncertainty response. Generation quality
+still depends on the configured model; fake tests do not evaluate live vision
+or prove prompt-injection resistance.
+
+Migration for previously enabled vision deployments: reverify the exact model
+and set `SC_VERIFIED_IMAGE_MODEL_ID` to `SC_MODEL_ID` alongside the existing flag.
+A flag alone no longer enables images. Custom `ModelAdapter` implementations
+must provide `supports_images`; the shared Cloud adapter derives it from the
+model-bound approval. Request and SSE payload schemas are unchanged.
+
+Run focused fake-only checks with:
+
+```sh
+.venv/bin/python -m pytest -q tests/test_summarize.py
+```
 
 ## Architecture and operations
 
