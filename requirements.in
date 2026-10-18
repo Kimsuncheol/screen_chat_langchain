@@ -1,0 +1,11 @@
+fastapi>=0.118,<1
+uvicorn>=0.35,<1
+langchain-core>=1,<2
+langsmith>=0.14,<1
+anyio>=4,<5
+httpx>=0.28,<1
+pydantic-settings>=2.10,<3
+firebase-admin>=7,<8
+Pillow>=12,<13
+pytest>=8,<10
+pytest-asyncio>=1,<2
