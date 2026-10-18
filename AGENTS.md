@@ -7,7 +7,8 @@ Ollama Cloud. The Flutter client lives at
 `/Users/gimseoncheol/Desktop/screen_chat`.
 
 Read `docs/API.md` before changing API behavior. It is the maintained API contract.
-Its initial status is proposed; do not describe unimplemented endpoints as live.
+Keep its implementation and deployment status accurate; do not describe
+unconfigured provider or client integrations as verified.
 
 ## Required documentation maintenance
 

@@ -4,9 +4,18 @@ services:
     name: screen-chat-ai
     runtime: python
     plan: free
+    region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --no-access-log
     healthCheckPath: /health
+    # This service was created via CLI. Apply config changes explicitly;
+    # documentation-only commits should not restart the API.
+    buildFilter:
+      ignoredPaths:
+        - docs/**
+        - README.md
+        - AGENTS.md
+        - render.yaml
     envVars:
       - key: PYTHON_VERSION
         value: "3.14.6"

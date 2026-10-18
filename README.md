@@ -3,14 +3,17 @@
 Implemented FastAPI backend for the Android Flutter client at
 `../screen_chat`. Summarize, analyze and ask share validation, Firebase identity,
 limits, cancellation, and a direct Ollama Cloud adapter. This is implemented
-source, not a deployed service. The Flutter client still runs local Gemma and
+source, deployed to Render Free at https://screen-chat-ai.onrender.com.
+Health, OpenAPI, docs and unauthenticated access rejection were verified;
+Ollama/Firebase credentials and model setup remain pending, so authenticated
+generation is not verified. The Flutter client still runs local Gemma and
 has Firebase Core only: cloud transport and sign-in are not integrated yet.
 
 ## Setup and run
 
 Deployment target: **Render Free**. The root `render.yaml` and
 [deployment guide](docs/RENDER.md) define the configuration and secret setup.
-No live deployment has been verified. Free instances sleep when idle; quotas
+The Free service is live in Singapore. Free instances sleep when idle; quotas
 reset with the process. Ollama Cloud usage has separate account limits/costs.
 
 Python 3.11+ is required (verified here with Python 3.14). Use a virtual environment:

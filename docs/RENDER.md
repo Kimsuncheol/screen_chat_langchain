@@ -1,6 +1,21 @@
 # Deploy to Render Free
 
-Status: deployment configuration prepared; no live deployment verified.
+Status: deployed on Render Free in Singapore on 2026-10-18.
+
+- Base URL: https://screen-chat-ai.onrender.com
+- Dashboard: https://dashboard.render.com/web/srv-dbacdeom7kps738abkp0
+- Deployed source commit: `466d844e674ed6b279aa9038d11a6829b8719842`
+- Verified: health, OpenAPI and Swagger docs return HTTP 200; capabilities and
+  assistant reject unauthenticated requests with HTTP 401. All 140 local tests pass.
+- Pending: replacement Ollama key, exact model selection, Firebase Admin secret
+  file, initial UID allowlist, real authenticated generation and SSE verification.
+  No paid model call was made. Hosting being live does not mean AI is configured.
+
+The service was created with Render CLI, not linked to a Blueprint. App code
+commits auto-deploy. Documentation and `render.yaml` changes are ignored by
+automatic builds; apply service configuration changes explicitly through Render
+or adopt a Blueprint. The YAML records the intended configuration but does not
+automatically synchronize secrets or service settings for this CLI-created service.
 
 ## Configuration
 

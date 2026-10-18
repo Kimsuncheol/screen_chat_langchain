@@ -1,20 +1,23 @@
 # Screen Chat AI API
 
-Status: **Implemented and tested locally; not deployed. Flutter cloud integration is pending.**
+Status: **Deployed on Render Free; public health/docs and authentication rejection verified. Provider/Firebase credential setup, authenticated generation, and Flutter cloud integration are pending.**
 
 API version: `v1`  
 Last updated: 2026-10-18
 
 This document defines the initial Flutter-to-cloud contract for FastAPI,
 LangChain, and Ollama Cloud. Paths are relative to a deployment base URL that
-has not yet been assigned. Production traffic must use HTTPS.
+is `https://screen-chat-ai.onrender.com`. Production traffic must use HTTPS.
 
 ## Architecture and data handling
 
 ### Render Free deployment profile
 
 The deployment target is one Render Free Python web service using `render.yaml`.
-No public base URL or successful deployment is verified yet. See
+The base URL is `https://screen-chat-ai.onrender.com`, deployed in Singapore.
+Health, OpenAPI, docs and unauthenticated rejection were verified on 2026-10-18.
+Ollama key/model and Firebase Admin credentials remain to be configured; real
+authenticated generation and end-to-end SSE are not verified. See
 [deployment and secret configuration](RENDER.md).
 
 This profile uses one Uvicorn worker and sets `SC_MAX_CONCURRENT_REQUESTS=2`;
@@ -602,6 +605,7 @@ not authorize automatic resubmission of a partially streamed answer.
 
 | Date | Change | Compatibility |
 | --- | --- | --- |
+| 2026-10-18 | Deployed on Render Free in Singapore at https://screen-chat-ai.onrender.com; verified public health/docs and HTTP 401 for unauthenticated protected endpoints | No schema changes; provider/Firebase secret setup and authenticated generation remain pending |
 | 2026-10-18 | Added Render Free deployment profile, secret configuration, cold-start behavior and process-local quota reset notes | No API schema changes; Render profile reduces global concurrency to 2; Flutter must handle cold-start delay and gateway errors |
 | 2026-10-18 | Refined ask prompt for current-question priority, bounded client-supplied history, grounding and clarification; retained all accepted context and placed question last in prompt data; added Flutter examples and privacy/lifecycle tests | No request/SSE schemas, defaults, authentication or limit changes; no client migration. Larger prompt instructions count toward the existing context estimate |
 | 2026-10-18 | Refined analyze guidance for observations versus hypotheses, incomplete charts, ambiguous screens, optional focus and user-only next steps; added fake transport/lifecycle tests and SSE example | No request/SSE schema, limit, default or authentication changes; no client migration. Prompt/output guidance changes only; headings are conditional model output, not new structured response fields |
