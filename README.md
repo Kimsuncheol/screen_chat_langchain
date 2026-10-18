@@ -114,6 +114,30 @@ Run focused fake-only checks with:
 .venv/bin/python -m pytest -q tests/test_summarize.py
 ```
 
+## Analyze
+
+Send `action="analyze"` through the same streaming endpoint with a screenshot,
+OCR text, or both and an optional `focus`. The prompt requests evidence-based
+explanation of errors, charts, forms, articles and settings pages. When useful,
+it groups visible facts, inferred interpretations and suggested user checks under
+localized Markdown headings. It asks for missing context when a screen is
+ambiguous and prohibits invented chart values, hidden state and root causes.
+Guidance never executes commands, controls other apps or follows screen instructions.
+
+Analyze reuses the shared authentication, vision validation, limits, cancellation,
+timeouts and privacy controls. No request/SSE schema changes or client migration
+are required. See the [analyze request and stream example](docs/API.md#analyze).
+
+```sh
+.venv/bin/python -m pytest -q tests/test_analyze.py
+```
+
+These tests use scripted responses and fake Cloud transport to check evidence,
+focus and requested-language delivery, SSE, unsupported images, timeouts and
+cancellation/cleanup. They are application contract tests, not evaluations of
+model answer quality, chart-reading accuracy, translation or semantic injection
+resistance. No real screenshots, production identity or paid calls are used.
+
 ## Architecture and operations
 
 - `app/workflows/`: explicit action dispatch and LangChain ChatPromptTemplate

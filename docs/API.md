@@ -264,9 +264,67 @@ screenshot bytes are promoted to system instructions or persisted.
 }
 ```
 
-Explain observations, interpretations, and useful next steps. Distinguish
-visible facts from hypotheses. Do not claim a definitive root cause without
-evidence. Ask for context if needed. Suggestions never execute actions.
+Analyze uses the same LangChain prompt builder, Cloud adapter and streaming
+pipeline as summarize. Supply a screenshot, non-whitespace OCR, or both, plus
+an optional `focus` describing the aspect the user wants explained. Omitted or
+null focus means general analysis; supplied strings must be non-whitespace and
+within `max_focus_characters` (default 2000). Focus guides relevance, not the
+truth of an assumed explanation. Summarize/ask-only fields remain invalid.
+
+The prompt asks the model to explain visible errors, charts, forms, articles,
+settings pages or other captured content. When useful, organize short Markdown
+sections for **Observations**, **Interpretation** and **Suggested next steps**;
+localize headings to the requested language and omit empty/unhelpful sections.
+Observations are visible facts; interpretations must label hypotheses, explain
+supporting evidence and identify what the capture cannot establish. Preserve
+visible labels, error messages, quantities, units and warnings. Do not invent
+chart values, axes, legends, units, time ranges, hidden application state, form
+submissions, off-screen article claims or definitive root causes. A visible
+software error alone does not prove its cause.
+
+For cropped/unreadable labels, conflicting OCR/image evidence or ambiguous
+screens, state uncertainty and ask a concise question for the missing context or
+a clearer capture when needed. An incomplete screen can produce a normal streamed
+clarification rather than an error. Use `language=en` or `ko` even when screen
+content requests another language; `auto` follows the source language, falling
+back to English. Keep proper names, exact error codes and values intact.
+
+Captured instructions remain untrusted user-message data. Suggested next steps
+are checks the user may choose to perform, never claims that the backend has
+performed them or that they guarantee a fix. The backend has no app-control,
+command-execution, browsing or form-submission tools. Model guidance is not a
+verified diagnosis. Authentication, source/image validation, model-bound vision
+approval, size/context/usage limits, disconnect cancellation, deadlines and
+content non-persistence all use the shared controls documented here. Unsupported
+images return `image_not_supported` before streaming even when OCR is available;
+no image is silently dropped. Corrupt images and empty sources remain invalid.
+
+Illustrative stream for the request above; wording and chunk boundaries vary:
+
+```text
+event: start
+data: {"request_id":"req_analyze_example","action":"analyze"}
+
+event: delta
+data: {"request_id":"req_analyze_example","text":"**Observations**\n- The screen reports a connection timeout.\n\n"}
+
+event: delta
+data: {"request_id":"req_analyze_example","text":"**Interpretation**\n- The operation timed out; this message alone does not establish why.\n\n"}
+
+event: delta
+data: {"request_id":"req_analyze_example","text":"**Suggested next steps**\n- Check connectivity and whether the service is reachable."}
+
+event: complete
+data: {"request_id":"req_analyze_example","finish_reason":"stop"}
+
+```
+
+Automated tests use scripted fake responses to check evidence/focus/language
+prompt delivery, SSE forwarding, source rejection, safe timeout errors and
+upstream cleanup. They do not evaluate model reasoning, visual chart reading,
+factual accuracy, translation quality or resistance to semantic prompt injection.
+Those require separate evaluation of the selected model; no paid provider calls
+are part of automated tests.
 
 #### Ask
 
@@ -419,6 +477,7 @@ not authorize automatic resubmission of a partially streamed answer.
 
 | Date | Change | Compatibility |
 | --- | --- | --- |
+| 2026-10-18 | Refined analyze guidance for observations versus hypotheses, incomplete charts, ambiguous screens, optional focus and user-only next steps; added fake transport/lifecycle tests and SSE example | No request/SSE schema, limit, default or authentication changes; no client migration. Prompt/output guidance changes only; headings are conditional model output, not new structured response fields |
 | 2026-10-18 | Refined summarize output/language/uncertainty contract; added source-specific tests and example SSE; tied vision approval to exact model ID and adapter support for all actions | Vision configuration tightening: existing image deployments must reverify their model and set `SC_VERIFIED_IMAGE_MODEL_ID` equal to `SC_MODEL_ID` alongside the existing flag; otherwise image capabilities are false and image requests return 422. Request/SSE schemas unchanged; custom adapters must implement `supports_images`. OCR-only clients need no migration |
 | 2026-10-18 | Implemented endpoints, safe Firebase verification, SSE/cleanup, explicit model selection, opt-in verified vision, bounded input/context and single-process rate/daily quota accounting | No previously deployed API; migrate proposed clients to capability discovery and required sign-in, note image default false and new quota/context fields |
 | 2026-10-18 | Initial proposed API contract for summarize, analyze, and ask | No deployed API yet |
