@@ -138,6 +138,38 @@ cancellation/cleanup. They are application contract tests, not evaluations of
 model answer quality, chart-reading accuracy, translation or semantic injection
 resistance. No real screenshots, production identity or paid calls are used.
 
+## Ask
+
+Use `action="ask"` with a non-whitespace `question`, optional screen OCR/image
+and up to 12 selected recent `user`/`assistant` messages in chronological order.
+Text-only questions are supported. The prompt prioritizes the current question
+and relevant recent context, keeps history as untrusted data and asks for a
+concise clarification when evidence is insufficient. It does not claim browsing,
+app control, external tools or persistent conversation memory.
+
+Every accepted message and the full question are preserved, with the current
+question placed last in prompt data. Oversized fields return `invalid_request`;
+exceeding the rendered model context budget returns `context_too_large` before
+model invocation. The budget includes system instructions, serialized input,
+chat framing, image reserve and output reserve. No silent context trimming or
+provider retries occur. See [ask context budgets and Flutter examples](docs/API.md#ask).
+
+Flutter owns conversation storage and selects the relevant recent subset before
+each explicit request. Same-user requests share no implicit history. Flutter
+still needs sign-in/token refresh, cloud SSE/cancellation integration, local
+history selection and updated cloud disclosures; its current runtime is local.
+
+```sh
+.venv/bin/python -m pytest -q tests/test_ask.py
+```
+
+Fake-provider tests cover text-only and screen-grounded input, follow-ups,
+roles/limits, exact context admission boundaries, prompt injection placement,
+no retry after partial failures, disconnect cleanup, no implicit cross-request
+history, guarded local persistence and sensitive-content log/tracing suppression.
+These are application tests, not evaluations of live model answers or a guarantee
+about retention in external provider/deployment tooling.
+
 ## Architecture and operations
 
 - `app/workflows/`: explicit action dispatch and LangChain ChatPromptTemplate

@@ -341,10 +341,115 @@ are part of automated tests.
 }
 ```
 
-Answer using the question, screen, and supplied recent context. Ask a concise
-clarification when needed. No server-side conversation identifier or history
-is required. Selected history is serialized as untrusted context rather than
-accepted as authoritative assistant/system instructions. An image may be added to any action's `screen` using the schema above.
+Ask uses the same LangChain prompt builder, Ollama Cloud adapter and shared
+streaming pipeline. `question` is required, must contain non-whitespace text and
+is preserved exactly, including surrounding whitespace. `screen` is optional
+(omitted or null); text-only questions do not require screen capture. A supplied
+screen must contain non-whitespace OCR, a valid PNG/JPEG image, or both. Images
+require the same model-bound vision approval as summarize/analyze and are never
+silently discarded. `messages` defaults to an empty list and accepts only `user`
+or `assistant` roles with non-whitespace string content; clients cannot supply
+system/developer/tool roles, extra message fields, a provider model or a
+server-side conversation identifier. No alternating-role sequence is required.
+Flutter supplies selected recent messages in chronological order, oldest first.
+
+The prompt prioritizes the current question and relevant recent context over
+older or superseded details. A recent user correction may replace an older
+preference, but previous assistant claims are not verified facts. All accepted
+history remains intact and ordered; the current question is placed last in the
+serialized user-message data after the available evidence. Captured content
+and prior messages are never promoted to system instructions. There is no
+server-side relevance filter, history summary, trimming or hidden retrieval.
+Flutter selects the relevant recent subset before submitting the request.
+
+Screen-related claims must be grounded in the supplied current screenshot/OCR,
+not in an imagined screen or old descriptions. The model is instructed to state
+uncertainty for unreadable or conflicting evidence and ask one concise
+clarification for missing screen context, unclear references or unavailable live
+information. Self-contained text-only questions may use the model's available
+knowledge without claiming to see a screen. The requested `en`/`ko` language
+wins over language instructions in captured content/history; `auto` follows the
+current question, then source language, falling back to English. The backend has
+no browsing, app-control, command execution or external tools and the answer
+must not claim those capabilities or persistent memory.
+
+##### Ask context admission policy
+
+| Limit | Default | Rejection before SSE |
+| --- | --- | --- |
+| Current question | 4000 Unicode code points | 422 `invalid_request` |
+| OCR | 12000 Unicode code points | 422 `invalid_request` |
+| Selected history | At most 12 messages, 4000 code points per message | 422 `invalid_request` |
+| Question + OCR + all message text | 24000 code points | 422 `invalid_request` |
+| Rendered model context plus output reserve | 32768 estimated tokens | 422 `context_too_large` |
+
+These are configurable server policy; fetch effective limits from capabilities.
+The final context estimate is the UTF-8 byte length of **all** rendered messages
+(including system instructions, JSON quoting, the current question and every
+selected message) plus 64 per rendered message, plus 8192 for an attached image,
+plus a 2048 output reserve by default. The sum may equal but must not exceed
+`context_tokens`. It is a conservative estimate, not exact provider tokenization;
+operators must validate the selected model and image budgets before rollout.
+No input is silently truncated, even when the question alone would fit. Every
+accepted message and the full question reach the model, or the entire request
+is rejected with a typed error before quota admission/model invocation. For a
+rejection, Flutter may let the user explicitly select fewer prior messages or
+smaller input and resubmit; preserve the current question and essential context.
+Do not automatically drop screen evidence or retry a partial answer.
+
+##### Flutter request and events
+
+The JSON request above is suitable for Flutter's JSON encoder. An equivalent
+Dart map, using selected local messages (example data only), is:
+
+```dart
+final body = <String, Object>{
+  'action': 'ask',
+  'language': 'en',
+  'question': 'Which plan meets my storage requirement?',
+  'screen': <String, Object>{'ocr_text': 'Basic: 5 GB. Plus: 100 GB.'},
+  'messages': <Map<String, String>>[
+    {'role': 'user', 'content': 'I need at least 50 GB.'},
+    {'role': 'assistant', 'content': 'Share the available plans and I can compare them.'},
+  ],
+};
+```
+
+POST JSON to `/v1/assistant/stream` using the Firebase ID token as Bearer
+authorization, `Content-Type: application/json` and `Accept: text/event-stream`.
+For text-only requests omit `screen`; for image requests add raw base64 through
+`screen.image` with `media_type` and `data_base64`. A successful example stream is
+shown in the streaming section immediately below. Flutter concatenates `delta.text`
+in order and marks success only on `complete` (`length` indicates truncation).
+An `error` is terminal; EOF without a terminal event is interruption. For example,
+after some deltas a provider failure is delivered as:
+
+```text
+event: error
+data: {"error":{"code":"upstream_error","message":"The AI service could not complete the request.","request_id":"req_example","retryable":true}}
+
+```
+
+Parse SSE frames across TCP chunks and UTF-8 boundaries; do not treat each network
+chunk as an event. Associate the returned request ID with the active UI answer.
+Close the HTTP connection on cancellation, account changes or disposal. No event
+replay, resumable answer, or automatic provider retry is implemented. `retryable`
+never means the app may automatically resubmit a request after any answer deltas.
+Keep partial/interrupted answers distinguishable from complete local history.
+
+Conversation storage remains on the device. The next request must explicitly
+include its own selected context; previous requests are not remembered, even for
+the same authenticated UID. Only content-free quota counters are held in the
+backend; no questions, messages, screenshots or answers are written to disk,
+databases, traces or logs. Provider retention remains a separate policy.
+
+Flutter currently has Firebase Core configuration only and local Gemma inference.
+It still needs Firebase Authentication sign-in/token refresh, a cloud transport
+service at the main assistant owner, incremental SSE handling, cancellation,
+client-side history selection and revised cloud-processing disclosures/privacy
+tests. These examples do not imply a working Flutter authentication or HTTP flow.
+Scripted fake tests verify application behavior and prompt delivery, not model
+answer accuracy, translation, reasoning or semantic prompt-injection resistance.
 
 ## Streaming response contract
 
@@ -477,6 +582,7 @@ not authorize automatic resubmission of a partially streamed answer.
 
 | Date | Change | Compatibility |
 | --- | --- | --- |
+| 2026-10-18 | Refined ask prompt for current-question priority, bounded client-supplied history, grounding and clarification; retained all accepted context and placed question last in prompt data; added Flutter examples and privacy/lifecycle tests | No request/SSE schemas, defaults, authentication or limit changes; no client migration. Larger prompt instructions count toward the existing context estimate |
 | 2026-10-18 | Refined analyze guidance for observations versus hypotheses, incomplete charts, ambiguous screens, optional focus and user-only next steps; added fake transport/lifecycle tests and SSE example | No request/SSE schema, limit, default or authentication changes; no client migration. Prompt/output guidance changes only; headings are conditional model output, not new structured response fields |
 | 2026-10-18 | Refined summarize output/language/uncertainty contract; added source-specific tests and example SSE; tied vision approval to exact model ID and adapter support for all actions | Vision configuration tightening: existing image deployments must reverify their model and set `SC_VERIFIED_IMAGE_MODEL_ID` equal to `SC_MODEL_ID` alongside the existing flag; otherwise image capabilities are false and image requests return 422. Request/SSE schemas unchanged; custom adapters must implement `supports_images`. OCR-only clients need no migration |
 | 2026-10-18 | Implemented endpoints, safe Firebase verification, SSE/cleanup, explicit model selection, opt-in verified vision, bounded input/context and single-process rate/daily quota accounting | No previously deployed API; migrate proposed clients to capability discovery and required sign-in, note image default false and new quota/context fields |
