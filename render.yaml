@@ -1,0 +1,30 @@
+# Secrets are entered in Render, never committed here.
+services:
+  - type: web
+    name: screen-chat-ai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --no-access-log
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14.6"
+      - key: SC_OLLAMA_API_KEY
+        sync: false
+      - key: SC_MODEL_ID
+        sync: false
+      - key: SC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: SC_ALLOWED_UIDS
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/firebase-admin.json
+      - key: SC_MAX_CONCURRENT_REQUESTS
+        value: "2"
+      - key: SC_IMAGE_SUPPORT_VERIFIED
+        value: "false"
+      - key: LANGSMITH_TRACING
+        value: "false"
+      - key: LANGCHAIN_TRACING_V2
+        value: "false"

@@ -8,6 +8,11 @@ has Firebase Core only: cloud transport and sign-in are not integrated yet.
 
 ## Setup and run
 
+Deployment target: **Render Free**. The root `render.yaml` and
+[deployment guide](docs/RENDER.md) define the configuration and secret setup.
+No live deployment has been verified. Free instances sleep when idle; quotas
+reset with the process. Ollama Cloud usage has separate account limits/costs.
+
 Python 3.11+ is required (verified here with Python 3.14). Use a virtual environment:
 
 ```sh

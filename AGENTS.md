@@ -27,6 +27,10 @@ event, error, model capability, privacy behavior, or client integration step.
 
 ## Implementation rules
 
+- Target deployment is a Render Free Python web service using `render.yaml`.
+  Keep one worker because current admission limits are process-local. Never
+  upgrade to paid resources without explicit user authorization. Keep secrets
+  in Render environment variables/secret files, never in the repository.
 - Verify official provider/framework documentation before choosing integration
   APIs, model IDs, authentication, or provider capabilities.
 - Keep summarize, analyze, and ask as modules in one backend, sharing model

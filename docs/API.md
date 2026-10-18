@@ -11,6 +11,26 @@ has not yet been assigned. Production traffic must use HTTPS.
 
 ## Architecture and data handling
 
+### Render Free deployment profile
+
+The deployment target is one Render Free Python web service using `render.yaml`.
+No public base URL or successful deployment is verified yet. See
+[deployment and secret configuration](RENDER.md).
+
+This profile uses one Uvicorn worker and sets `SC_MAX_CONCURRENT_REQUESTS=2`;
+image support stays disabled pending exact-model verification. API request,
+response, and SSE schemas are unchanged. `/health` verifies process liveness
+only, not Ollama access or Firebase credentials.
+
+Free services sleep after 15 idle minutes and may take about a minute to wake.
+Client connection/startup timeouts must allow for that delay separately from
+the API generation deadline. During wake-up or outages, Render gateway responses
+may not follow this API's error JSON. Treat these as transport failures and
+never assume an incomplete stream completed successfully. No replay is supported.
+Rate/daily quota counters are in memory and reset when the service restarts,
+redeploys or spins down; they are not durable billing controls. Render hosting
+and Ollama Cloud usage have separate allowances. No paid resources are configured.
+
 Flutter captures a screen only after a user action. It sends the selected
 screenshot, OCR, question, and/or recent messages to FastAPI. Explicit action
 dispatch selects a LangChain prompt workflow; a shared HTTP adapter invokes
@@ -582,6 +602,7 @@ not authorize automatic resubmission of a partially streamed answer.
 
 | Date | Change | Compatibility |
 | --- | --- | --- |
+| 2026-10-18 | Added Render Free deployment profile, secret configuration, cold-start behavior and process-local quota reset notes | No API schema changes; Render profile reduces global concurrency to 2; Flutter must handle cold-start delay and gateway errors |
 | 2026-10-18 | Refined ask prompt for current-question priority, bounded client-supplied history, grounding and clarification; retained all accepted context and placed question last in prompt data; added Flutter examples and privacy/lifecycle tests | No request/SSE schemas, defaults, authentication or limit changes; no client migration. Larger prompt instructions count toward the existing context estimate |
 | 2026-10-18 | Refined analyze guidance for observations versus hypotheses, incomplete charts, ambiguous screens, optional focus and user-only next steps; added fake transport/lifecycle tests and SSE example | No request/SSE schema, limit, default or authentication changes; no client migration. Prompt/output guidance changes only; headings are conditional model output, not new structured response fields |
 | 2026-10-18 | Refined summarize output/language/uncertainty contract; added source-specific tests and example SSE; tied vision approval to exact model ID and adapter support for all actions | Vision configuration tightening: existing image deployments must reverify their model and set `SC_VERIFIED_IMAGE_MODEL_ID` equal to `SC_MODEL_ID` alongside the existing flag; otherwise image capabilities are false and image requests return 422. Request/SSE schemas unchanged; custom adapters must implement `supports_images`. OCR-only clients need no migration |
